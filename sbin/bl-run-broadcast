@@ -63,27 +63,43 @@ command -v "$1" >/dev/null || error_exit "cannot find command $1"
 
 [[ $( id -u ) -eq 0 ]] || error_exit "This script must be run as root."
 
-declare -A displays users
-users=()
+declare -A displays userlist
+userlist=()
 displays=()
 
 for i in $(users);do # "users" command o/p
     (( $(id -u "$i") < 1000 )) && continue # normal users only
-    users[$i]=1
+    userlist[$i]=1
 done # unique names
 
-(( ${#users[@]} == 0 )) && { echo "${0}: no normal users are logged in, nothing to do"; exit 0; }
+(( ${#userlist[@]} == 0 )) && { echo "${0}: no normal users are logged in, nothing to do"; exit 0; }
 
-for u in "${!users[@]}"; do
+for u in "${!userlist[@]}"; do
     for i in $(ps e -u "$u" | sed -rn 's/.* DISPLAY=(:[0-9]*).*/\1/p');do
         displays[$i]=$u
     done
 done
 
+# Collect user/display mappings (possible multiple users on same display)
+#for u in "${!userlist[@]}"; do
+#    # detect all displays used by this user
+#    for i in $(ps e -u "$u" | sed -rn 's/.* DISPLAY=(:[0-9]*).*/\1/p'); do
+#        # Append to existing user list for this DISPLAY (space-separated)
+#        [[ -n "${displays[$i]}" ]] && [[ "${displays[$i]}" =~ (^|[[:space:]])$u($|[[:space:]]) ]] || displays[$i]+="$u "
+#    done
+#done
+
 for d in "${!displays[@]}";do
-	runuser -l "${displays[$d]}" --shell /usr/bin/bash -c "set -m; DISPLAY=${d} XDG_RUNTIME_DIR=/run/user/$(id -u ${displays[$d]}) $(printf '%q ' "$@" ) >/dev/null 2>&1 & disown; set +m;"
+	runuser -l "${displays[$d]}" --shell /usr/bin/bash -c "set -m; DISPLAY=\"${d}\" XDG_RUNTIME_DIR=/run/user/$(id -u "${displays[$d]}") $(printf '%q ' "$@" ) >/dev/null 2>&1 & disown; set +m;"
 #	runuser -u "${displays[$d]}" -- bash -c "set -m; DISPLAY=${d} $(printf '%q ' "$@" ) >/dev/null 2>&1 & disown; set +m;"
 #    sudo -u "${displays[$d]}" DISPLAY="$d" bash -c " $(printf '%q ' "$@" ) & "
 done
+
+## if multiple users might be on same display
+#for d in "${!displays[@]}"; do
+#    for u in ${displays[$d]}; do
+#        runuser -l "$u" --shell /usr/bin/bash -c "set -m; DISPLAY=\"${d}\" XDG_RUNTIME_DIR=/run/user/$(id -u "$u") $(printf '%q ' "$@" ) >/dev/null 2>&1 & disown; set +m;"
+#    done
+#done
 
 exit
