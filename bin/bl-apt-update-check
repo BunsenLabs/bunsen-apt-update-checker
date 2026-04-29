@@ -97,7 +97,7 @@ show-upgrades(){
 #    [[ -p "$PIPE" ]] || { echo "${0}: there is no fifo $PIPE" >&2 ; exit 1;}
 #    exec {yad_fd}<>"$PIPE" ||  { echo "${0}: show-upgrades(): failed to set file descriptor '$yad_fd' to $PIPE" >&2 ; exit 1;}
     x-terminal-emulator -T 'Available Package Upgrades' -e bash -c 'printf "%s\n" "Available upgrades:"
-    apt list --upgradeable
+    LESS=FRXMK apt list --upgradeable
     printf "\n%s\n"  "Held packages:"
     apt-mark showhold
     printf "\n%s\n" "Press Enter for a bash shell, Q to quit"
